@@ -44,9 +44,11 @@ Additionally, include a date table.
 There are several tools online you can use, I'd recommend [Draw.io](https://www.drawio.com/) or [LucidChart](https://www.lucidchart.com/pages/).
 
 **HINT:** You do not need to create any data for this prompt. This is a conceptual model only. 
+![alt text](Bookstore1.drawio.png)
 
 #### Prompt 2
 We want to create employee shifts, splitting up the day into morning and evening. Add this to the ERD.
+![alt text](Bookstore2.drawio.png)
 
 #### Prompt 3
 The store wants to keep customer addresses. Propose two architectures for the CUSTOMER_ADDRESS table, one that will retain changes, and another that will overwrite. Which is type 1, which is type 2? 
@@ -54,7 +56,82 @@ The store wants to keep customer addresses. Propose two architectures for the CU
 **HINT:** search type 1 vs type 2 slowly changing dimensions. 
 
 ```
-Your answer...
+Your answer..
+
+1. Overwrite Changes
+Description: In this architecture, when a customer's address changes, the new address simply overwrites the old one. No historical data about previous addresses is retained.
+
+Table Structure:
+CREATE TABLE CUSTOMER_ADDRESS (
+    Customer_ID INT PRIMARY KEY, -- Foreign Key to Customer table
+    Address_Line1 VARCHAR(255),
+    Address_Line2 VARCHAR(255),
+    City VARCHAR(100),
+    State VARCHAR(100),
+    Zip_Code VARCHAR(20),
+    Country VARCHAR(100)
+);
+
+Behavior:
+
+When an address update is required, the new address directly replaces the existing record.
+For example:
+Old Address: 123 Maple St, Springfield, IL
+Updated to: 456 Oak St, Chicago, IL
+Result: 123 Maple St is permanently replaced with 456 Oak St.
+
+Advantages:
+
+Simple to implement and query.
+Minimal storage requirements.
+
+Disadvantages:
+
+No historical tracking of address changes.
+
+
+2. Retain Changes
+Description: In this architecture, each address change creates a new record, and historical addresses are retained with validity periods (Start_Date and End_Date columns).
+
+Table Structure:
+
+CREATE TABLE CUSTOMER_ADDRESS (
+    Address_ID INT PRIMARY KEY, -- Unique identifier for each address record
+    Customer_ID INT, -- Foreign Key to Customer table
+    Address_Line1 VARCHAR(255),
+    Address_Line2 VARCHAR(255),
+    City VARCHAR(100),
+    State VARCHAR(100),
+    Zip_Code VARCHAR(20),
+    Country VARCHAR(100),
+    Start_Date DATE, -- When this address became active
+    End_Date DATE    -- When this address stopped being active; NULL if current
+);
+
+Behavior:
+
+When an address update is required, the old record’s End_Date is set to the current date, and a new record is inserted with the new address and a Start_Date of the update date.
+
+For example:
+Old Address: 123 Maple St, Springfield, IL → End_Date: 2024-12-01
+New Address: 456 Oak St, Chicago, IL → Start_Date: 2024-12-02
+Result: Both addresses are retained in the table.
+
+Advantages:
+
+Full historical tracking of address changes.
+Useful for analytics, compliance, and audit trails.
+
+Disadvantages:
+
+Increased complexity in queries and table maintenance.
+Requires additional storage.
+
+
+Type Classification
+Type 1: Overwrite approach (single row per customer).
+Type 2: Retain approach (multiple rows per customer, one for each historical address).
+
 ```
 
 ***
