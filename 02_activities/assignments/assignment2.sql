@@ -19,7 +19,13 @@ HINT: keep the syntax the same, but edited the correct components with the strin
 The `||` values concatenate the columns into strings. 
 Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. 
 All the other rows will remain the same.) */
+SELECT 
+COALESCE(product_name, '') || ', ' || COALESCE(product_size, '') || ' (' || COALESCE(product_qty_type, '') || ')'
+FROM product;
 
+SELECT 
+COALESCE(product_name, '') || ', ' || COALESCE(product_size, '') || ' (' || COALESCE(product_qty_type, 'unit') || ')'
+FROM product;
 
 
 --Windowed Functions
@@ -32,16 +38,63 @@ each new market date for each customer, or select only the unique market dates p
 (without purchase details) and number those visits. 
 HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK(). */
 
+-- Use ROW_NUMBER function to showcase each cuustomer's visit to farmer's market, partition by customer_id and order by market_date.
+
+SELECT 
+    customer_id,
+    market_date,
+    cost_to_customer_per_qty,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date) AS visit_number
+FROM 
+    customer_purchases;
+
 
 
 /* 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, 
 then write another query that uses this one as a subquery (or temp table) and filters the results to 
 only the customer’s most recent visit. */
 
+-- sort the customer recent visit using DESC fundtion
+
+SELECT 
+    customer_id,
+    market_date,
+    cost_to_customer_per_qty,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_number
+FROM 
+    customer_purchases;
+
+-- filter out each customer's recent visit using windowed function
+
+SELECT 
+    customer_id,
+    market_date,
+    cost_to_customer_per_qty
+FROM 
+    (SELECT 
+         customer_id,
+         market_date,
+         cost_to_customer_per_qty,
+         ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_number
+     FROM 
+         customer_purchases) AS ranked_purchases
+WHERE 
+    visit_number = 1;
+
+
 
 
 /* 3. Using a COUNT() window function, include a value along with each row of the 
 customer_purchases table that indicates how many different times that customer has purchased that product_id. */
+
+SELECT 
+    customer_id,
+    product_id,
+    market_date,
+    cost_to_customer_per_qty,
+    COUNT(*) OVER (PARTITION BY customer_id, product_id) AS product_purchase_count
+FROM 
+    customer_purchases;
 
 
 
@@ -57,10 +110,22 @@ Remove any trailing or leading whitespaces. Don't just use a case statement for 
 
 Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR will help split the column. */
 
+SELECT 
+    product_name,
+    TRIM(SUBSTR(product_name, INSTR(product_name, '-') + 1)) AS description
+FROM 
+    product
 
 
 /* 2. Filter the query to show any product_size value that contain a number with REGEXP. */
 
+SELECT 
+    product_name,
+    product_size
+FROM 
+    product
+WHERE 
+    product_size REGEXP '[0-9]';
 
 
 -- UNION
@@ -72,6 +137,48 @@ HINT: There are a possibly a few ways to do this query, but if you're struggling
 "best day" and "worst day"; 
 3) Query the second temp table twice, once for the best day, once for the worst day, 
 with a UNION binding them. */
+
+-- To solve this problem, I took the help of chatgpt, but I am not fully cleared with solution and having some difficulty while working on it.
+WITH TotalSales AS (
+    -- Step 1: Calculate total sales per date
+    SELECT 
+        market_date,
+        SUM(sales_amount) AS total_sales
+    FROM 
+        sales_data
+    GROUP BY 
+        market_date
+),
+RankedSales AS (
+    -- Step 2: Rank the dates based on total sales
+    SELECT 
+        market_date,
+        total_sales,
+        RANK() OVER (ORDER BY total_sales DESC) AS sales_rank_desc,
+        RANK() OVER (ORDER BY total_sales ASC) AS sales_rank_asc
+    FROM 
+        TotalSales
+)
+-- Step 3: Select the best and worst days and combine the results with UNION
+SELECT 
+    market_date, 
+    total_sales, 
+    'Highest' AS sales_type
+FROM 
+    RankedSales
+WHERE 
+    sales_rank_desc = 1  -- Highest sales day
+
+UNION
+
+SELECT 
+    market_date, 
+    total_sales, 
+    'Lowest' AS sales_type
+FROM 
+    RankedSales
+WHERE 
+    sales_rank_asc = 1  -- Lowest sales day;
 
 
 
@@ -89,6 +196,7 @@ Think a bit about the row counts: how many distinct vendors, product names are t
 How many customers are there (y). 
 Before your final group by you should have the product of those two queries (x*y).  */
 
+-- I find this one really tough. I need somemore time to go through the concepts and processs them together for the above scenario.
 
 
 -- INSERT
@@ -97,10 +205,19 @@ This table will contain only products where the `product_qty_type = 'unit'`.
 It should use all of the columns from the product table, as well as a new column for the `CURRENT_TIMESTAMP`.  
 Name the timestamp column `snapshot_timestamp`. */
 
+CREATE TABLE product_units AS
+SELECT *, CURRENT_TIMESTAMP AS snapshot_timestamp
+FROM product
+WHERE product_qty_type = 'unit';
+
 
 
 /*2. Using `INSERT`, add a new row to the product_units table (with an updated timestamp). 
 This can be any product you desire (e.g. add another record for Apple Pie). */
+
+SELECT *, CURRENT_TIMESTAMP AS snapshot_timestamp
+INSERT INTO product_units
+VALUES(1,'Berries','Small',3,'unit',CURRENT_TIMESTAMP);
 
 
 
@@ -108,6 +225,11 @@ This can be any product you desire (e.g. add another record for Apple Pie). */
 /* 1. Delete the older record for the whatever product you added. 
 
 HINT: If you don't specify a WHERE clause, you are going to have a bad time.*/
+
+DELETE FROM product_units
+--SELECT * FROM product_expanded
+WHERE product_id = 1
+
 
 
 
@@ -128,6 +250,7 @@ Finally, make sure you have a WHERE statement to update the right row,
 	you'll need to use product_units.product_id to refer to the correct row within the product_units table. 
 When you have all of these components, you can run the update statement. */
 
+-- I find this one really tough. I need somemore time to go through the concepts and processs them together for the above scenario.
 
 
 
